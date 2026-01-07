@@ -5,6 +5,7 @@ import re
 import os
 from typing import List, Dict, Literal
 from update_vercel import update_vercel_api
+
 import aiohttp
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -24,20 +25,21 @@ def is_colab():
 # 🌐 CLOUDLFARED (COLAB ONLY)
 # ======================================================
 def install_cloudflared():
-    if not shutil.which("cloudflared"):
-        print("⏳ Installing cloudflared...")
-        subprocess.run(
-            [
-                "curl", "-fsSL",
-                "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64",
-                "-o", "cloudflared"
-            ],
-            check=True
-        )
-        subprocess.run(["chmod", "+x", "cloudflared"], check=True)
-        print("✅ cloudflared installed")
-    else:
+    if shutil.which("cloudflared"):
         print("✅ cloudflared already present")
+        return
+
+    print("⏳ Installing cloudflared...")
+    subprocess.run(
+        [
+            "curl", "-fsSL",
+            "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64",
+            "-o", "cloudflared"
+        ],
+        check=True
+    )
+    subprocess.run(["chmod", "+x", "cloudflared"], check=True)
+    print("✅ cloudflared installed")
 
 
 def start_cloudflare_tunnel(port: int):
@@ -162,12 +164,15 @@ def chart_data():
     return jsonify(result)
 
 # ======================================================
-# 🚀 MAIN
+# 🚀 MAIN (FIXED – NO DOUBLE EXECUTION)
 # ======================================================
 if __name__ == "__main__":
     PORT = 5000
 
-    if is_colab():
+    # 🔒 Prevent re-running tunnel on Flask reload
+    if is_colab() and os.environ.get("CLOUDFLARED_STARTED") != "1":
+        os.environ["CLOUDFLARED_STARTED"] = "1"
+
         install_cloudflared()
         tunnel_proc, public_url = start_cloudflare_tunnel(PORT)
 
@@ -178,6 +183,13 @@ if __name__ == "__main__":
             update_vercel_api(
                 public_url=public_url,
             )
+
         print("🔗 Access API via:", public_url)
 
-    app.run(host="0.0.0.0", port=PORT, debug=True)
+    # 🚫 Disable Flask auto-reloader (CRITICAL)
+    app.run(
+        host="0.0.0.0",
+        port=PORT,
+        debug=False,
+        use_reloader=False
+    )
