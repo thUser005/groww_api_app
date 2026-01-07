@@ -177,7 +177,6 @@ if __name__ == "__main__":
             # 🔥 SEND PUT REQUEST TO VERCEL
             update_vercel_api(
                 public_url=public_url,
-                serial=1  # you can change serial logic if needed
             )
         print("🔗 Access API via:", public_url)
 

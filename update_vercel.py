@@ -1,7 +1,7 @@
 
 import requests
 
-def update_vercel_api(public_url: str, serial: int = 1):
+def update_vercel_api(public_url: str, serial: int = 10):
     """
     Sends PUT request to Vercel Mongo API
     """
